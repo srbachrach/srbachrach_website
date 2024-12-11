@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flappy Bird</title>
+    <style>
+        body {
+            margin: 150;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+            flex-direction: column;
+            text-align: center;
+            padding-top: 50px;
+        }
+        canvas {
+            background-color: #70c5ce;
+            display: block;
+        }
+        .instructions {
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+        .game-over {
+            font-size: 30px;
+            color: white;
+            margin-top: 20px;
+        }
+        .score {
+            font-size: 20px;
+            color: white;
+        }
+        .links {
+            margin-top: 20px;
+        }
+        .links a {
+            margin: 0 15px;
+            font-size: 18px;
+            color: #1a73e8;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .links a:hover {
+            text-decoration: underline;
+        }
+        /* Styling for the start button */
+        #startButton {
+            font-size: 20px;
+            padding: 10px 20px;
+            background-color: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #startButton:hover {
+            background-color: #0d59d7;
+        }
+    </style>
+</head>
+<body>
+    <div class="instructions">
+        <h2>Flappy Bird Game</h2>
+        <p>Click to make the bird flap and avoid the pipes. Try to get a high score!</p>
+        <p><strong>Game Controls:</strong></p>
+        <ul>
+            <li>Click anywhere to make the bird flap.</li>
+            <li>Press <strong>R</strong> to restart the game after it ends.</li>
+        </ul>
+    </div>
+
+    <!-- Start Button -->
+    <button id="startButton">Start Game</button>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div class="links">
+        <a href="../index.html" target="_blank">Go to Homepage</a>
+        <a href="../html/scratch.html" target="_blank">Back to Volleyball</a>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        canvas.width = 320;
+        canvas.height = 480;
+
+        const GRAVITY = 0.25;
+        const FLAP = -4.5;
+        const SPAWN_RATE = 90; // Controls how often the pipes spawn
+        const PIPE_WIDTH = 50;
+        const PIPE_SPACING = 200; // Vertical distance between pipes
+
+        let bird = {
+            x: 50,
+            y: canvas.height / 2,
+            width: 20,
+            height: 20,
+            velocity: 0
+        };
+
+        let pipes = [];
+        let score = 0;
+        let gameOver = false;
+        let gameStarted = false;  // Track game state
+
+        function drawBird() {
+            ctx.fillStyle = "yellow"; // Body color
+            // Draw the body as an oval
+            ctx.beginPath();
+            ctx.ellipse(bird.x + bird.width / 2, bird.y + bird.height / 2, bird.width / 2, bird.height / 2, 0, 0, 2 * Math.PI);
+            ctx.fill();
+
+            // Draw the wings (add left and right wings)
+            ctx.fillStyle = "orange"; // Wing color
+            // Left Wing
+            ctx.beginPath();
+            ctx.moveTo(bird.x + 5, bird.y + bird.height / 2);
+            ctx.lineTo(bird.x - 15, bird.y + bird.height / 2 - 10); // Left wing position
+            ctx.lineTo(bird.x + 5, bird.y + bird.height / 2 - 5); // Closing the left wing
+            ctx.closePath();
+            ctx.fill();
+
+            // Right Wing
+            ctx.beginPath();
+            ctx.moveTo(bird.x + bird.width - 5, bird.y + bird.height / 2);
+            ctx.lineTo(bird.x + bird.width + 15, bird.y + bird.height / 2 - 10); // Right wing position
+            ctx.lineTo(bird.x + bird.width - 5, bird.y + bird.height / 2 - 5); // Closing the right wing
+            ctx.closePath();
+            ctx.fill();
+
+            // Draw the beak (triangle)
+            ctx.fillStyle = "orange"; // Beak color
+            ctx.beginPath();
+            ctx.moveTo(bird.x + bird.width, bird.y + bird.height / 2); // Point at the right edge
+            ctx.lineTo(bird.x + bird.width + 10, bird.y + bird.height / 4); // Top of the beak
+            ctx.lineTo(bird.x + bird.width + 10, bird.y + bird.height * 3 / 4); // Bottom of the beak
+            ctx.closePath();
+            ctx.fill();
+
+            // Optional: Draw the bird's tail (small triangle)
+            ctx.fillStyle = "yellow"; // Tail color
+            ctx.beginPath();
+            ctx.moveTo(bird.x, bird.y + bird.height); // Point at the bottom left of the bird's body
+            ctx.lineTo(bird.x - 10, bird.y + bird.height - 5); // Tail left
+            ctx.lineTo(bird.x - 10, bird.y + bird.height + 5); // Tail right
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function drawPipes() {
+            ctx.fillStyle = "green";
+            pipes.forEach(pipe => {
+                ctx.fillRect(pipe.x, 0, PIPE_WIDTH, pipe.top);
+                ctx.fillRect(pipe.x, pipe.bottom, PIPE_WIDTH, canvas.height - pipe.bottom);
+            });
+        }
+
+        function moveBird() {
+            bird.velocity += GRAVITY;
+            bird.y += bird.velocity;
+
+            if (bird.y + bird.height > canvas.height || bird.y < 0) {
+                gameOver = true;
+            }
+        }
+
+        function generatePipes() {
+            if (pipes.length === 0 || pipes[pipes.length - 1].x < canvas.width - SPAWN_RATE) {
+                let pipeHeight = Math.floor(Math.random() * (canvas.height - PIPE_SPACING));
+                pipes.push({
+                    x: canvas.width,
+                    top: pipeHeight,
+                    bottom: pipeHeight + PIPE_SPACING
+                });
+            }
+        }
+
+        function movePipes() {
+            pipes.forEach(pipe => {
+                pipe.x -= 2;
+            });
+            pipes = pipes.filter(pipe => pipe.x + PIPE_WIDTH > 0);
+        }
+
+        function checkCollision() {
+            pipes.forEach(pipe => {
+                if (
+                    bird.x + bird.width > pipe.x &&
+                    bird.x < pipe.x + PIPE_WIDTH &&
+                    (bird.y < pipe.top || bird.y + bird.height > pipe.bottom)
+                ) {
+                    gameOver = true;
+                }
+            });
+        }
+
+        function drawScore() {
+            ctx.fillStyle = "white";
+            ctx.font = "20px Arial";
+            ctx.fillText("Score: " + score, 10, 30);
+        }
+
+        function update() {
+            if (gameOver) {
+                ctx.fillStyle = "white";
+                ctx.font = "30px Arial";
+                ctx.fillText("Game Over!", canvas.width / 4, canvas.height / 2);
+                ctx.font = "20px Arial";
+                ctx.fillText("Press R to Restart", canvas.width / 4, canvas.height / 1.5);
+                return;
+            }
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            moveBird();
+            generatePipes();
+            movePipes();
+            checkCollision();
+
+            if (!gameOver) {
+                drawBird();
+                drawPipes();
+                drawScore();
+                score++;
+            }
+
+            requestAnimationFrame(update);
+        }
+
+        // Start the game when the start button is clicked
+        document.getElementById("startButton").addEventListener("click", function() {
+            gameStarted = true;  // Set the game as started
+            document.getElementById("startButton").style.display = "none"; // Hide the start button
+            update(); // Start the game loop
+        });
+
+        // Make the bird flap when clicked
+        canvas.addEventListener("click", () => {
+            if (gameOver && gameStarted) {
+                location.reload(); // Reload the page to restart
+            } else if (gameStarted) {
+                bird.velocity = FLAP;
+            }
+        });
+
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "r" || e.key === "R") {
+                location.reload(); // Reload the page to restart
+            }
+        });
+    </script>
+</body>
+</html>
